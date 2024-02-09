@@ -61,6 +61,7 @@ func (controller *CategoryControllerImpl) Delete(w http.ResponseWriter, r *http.
 
 	categoryId := p.ByName("categoryId")
 	id, err := strconv.Atoi(categoryId)
+	// fmt.Println()
 	helper.PanicIfErr(err)
 	controller.CategoryService.Delete(r.Context(), id)
 	webResponse := web.WebResponse{
