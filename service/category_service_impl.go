@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/NurFirdausR/golang-restfull-api/exception"
 	"github.com/NurFirdausR/golang-restfull-api/helper"
 	"github.com/NurFirdausR/golang-restfull-api/model/domain"
 	"github.com/NurFirdausR/golang-restfull-api/model/web"
@@ -14,15 +15,25 @@ import (
 type CategoryServiceImpl struct {
 	CategoryRepository repository.CategoryRepository
 	DB                 *sql.DB
-	validate           *validator.Validate
+	Validate           *validator.Validate
+}
+
+func NewCategoryService(categoryRepository repository.CategoryRepository, DB *sql.DB, validate *validator.Validate) CategoryService {
+	return &CategoryServiceImpl{
+		CategoryRepository: categoryRepository,
+		DB:                 DB,
+		Validate:           validate,
+	}
 }
 
 func (service *CategoryServiceImpl) Create(ctx context.Context, request web.CategoryCreateRequest) web.CategoryResponse {
-	err := service.validate.Struct(request)
+	err := service.Validate.Struct(request)
 	helper.PanicIfErr(err)
+
 	tx, err := service.DB.Begin()
 	helper.PanicIfErr(err)
 	defer helper.CommitOrRollback(tx)
+
 	category := domain.Category{
 		Name: request.Name,
 	}
@@ -33,15 +44,18 @@ func (service *CategoryServiceImpl) Create(ctx context.Context, request web.Cate
 }
 
 func (service *CategoryServiceImpl) Update(ctx context.Context, request web.CategoryUpdateRequest) web.CategoryResponse {
-	err := service.validate.Struct(request)
+	err := service.Validate.Struct(request)
 	helper.PanicIfErr(err)
 	tx, err := service.DB.Begin()
 	helper.PanicIfErr(err)
 	defer helper.CommitOrRollback(tx)
 
 	category, err := service.CategoryRepository.FindById(ctx, tx, request.Id)
-	helper.PanicIfErr(err)
+	if err != nil {
+		panic(exception.NewNotFoundeError(err.Error()))
+	}
 
+	category.Id = request.Id
 	category.Name = request.Name
 
 	category = service.CategoryRepository.Update(ctx, tx, category)
@@ -54,7 +68,9 @@ func (service *CategoryServiceImpl) Delete(ctx context.Context, categoryId int) 
 	helper.PanicIfErr(err)
 	defer helper.CommitOrRollback(tx)
 	category, err := service.CategoryRepository.FindById(ctx, tx, categoryId)
-	helper.PanicIfErr(err)
+	if err != nil {
+		panic(exception.NewNotFoundeError(err.Error()))
+	}
 	service.CategoryRepository.Delete(ctx, tx, category)
 }
 
@@ -63,7 +79,9 @@ func (service *CategoryServiceImpl) FindById(ctx context.Context, categoryId int
 	helper.PanicIfErr(err)
 	defer helper.CommitOrRollback(tx)
 	category, err := service.CategoryRepository.FindById(ctx, tx, categoryId)
-	helper.PanicIfErr(err)
+	if err != nil {
+		panic(exception.NewNotFoundeError(err.Error()))
+	}
 
 	return helper.ToCategoryResponse(category)
 }
